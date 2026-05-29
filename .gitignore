@@ -1,0 +1,15 @@
+# Секреты — никогда не в git
+.env
+.env.*
+*.key
+*.pem
+
+# Python (генерируется само, в git не нужно)
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Мусор и локальные индексы
+.DS_Store
+.codegraph/
