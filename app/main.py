@@ -16,6 +16,9 @@ import logging
 from fastapi import BackgroundTasks, FastAPI, Header, Request, Response
 
 from app import config, channel_max, router
+from app.fitbase import FitbaseWindow
+from app.mocks.fitbase_mock import FitbaseMock
+from app.mocks.alert_mock import AlertMock
 
 # Блок 0 проверяется «по приборам» (логам) → INFO обязан печататься.
 # В лог НЕ пишем ПД (телефон/текст) — только технические метки.
@@ -23,6 +26,21 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("block0.webhook")
 
 app = FastAPI(title="Мама рядом — Блок 0 (канал MAX)")
+
+# Окно Fitbase: на Фазе А поверх mock. Провайдер подменяется в тестах (set_window).
+_window = None
+
+
+def get_window():
+    global _window
+    if _window is None:
+        _window = FitbaseWindow(FitbaseMock(), alert=AlertMock())
+    return _window
+
+
+def set_window(window):
+    global _window
+    _window = window
 
 
 @app.get("/health")
@@ -48,6 +66,15 @@ def _process_messages(messages: list) -> None:
             "входящее: channel=%s chat=%s msg_id=%s from_lead=%s",
             msg.channel, msg.chat_id, msg.message_id, msg.is_from_lead,
         )
+
+        # Своя отправка / реплика продавца — не реакция лида (стоп-кран, метка Шага 1).
+        if not msg.is_from_lead:
+            continue
+
+        # Опознать → один лид + ворота (лид / действующий клиент → к админу).
+        result = router.route(msg, get_window())
+        logger.info("маршрут: action=%s lead=%s created=%s",
+                    result.action, result.lead_id, result.created)
 
 
 @app.post("/webhook")

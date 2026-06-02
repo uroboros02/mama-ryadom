@@ -102,6 +102,18 @@ class FitbaseWindow:
             logger.warning("Fitbase недоступен при поиске лида (%s) → None", channel)
             return None
 
+    def active_client_by_contact(self, keys):
+        """Действующий клиент с активным контрактом по надёжному ключу (телефон/id канала)?
+
+        Fitbase лёг → не можем проверить → None (ведём как лида: ложно заглушить лида
+        дороже, чем разок ответить действующему — см. философию ворот).
+        """
+        try:
+            return self._call(self.client.find_active_client_by_contact, keys)
+        except FitbaseDown:
+            logger.warning("Fitbase недоступен при проверке клиента → считаем лидом")
+            return None
+
     # --- ЗАПИСЬ (необратимое: идемпотентно + лог; кэш НЕ фейкуем) ---
     def create_task(self, idem_key, **fields):
         """Создать задачу продавцу. Идемпотентно по idem_key; Fitbase лёг → лог+эскалация."""
@@ -116,6 +128,21 @@ class FitbaseWindow:
             self._release_write(idem_key)  # запись не прошла → дать повторить позже
             logger.error("Fitbase недоступен — задачу не записать: key=%s → эскалация", idem_key)
             self._escalate(f"Не удалось создать задачу {idem_key}: Fitbase недоступен")
+            return None
+
+    def create_lead(self, idem_key, **fields):
+        """Создать лид (ПОДСТРАХОВКА — только когда не нашли). Идемпотентно + лог."""
+        if not self._claim_write(idem_key):
+            logger.info("лид уже создаётся (идемпотентность): key=%s", idem_key)
+            return None
+        try:
+            lead = self._call(self.client.create_lead, **fields)
+            logger.info("создан лид (подстраховка): key=%s id=%s", idem_key, lead.get("id"))
+            return lead
+        except FitbaseDown:
+            self._release_write(idem_key)
+            logger.error("Fitbase недоступен — лид не создать: key=%s → эскалация", idem_key)
+            self._escalate(f"Не удалось создать лид {idem_key}: Fitbase недоступен")
             return None
 
     def add_note_fact(self, lead_id, idem_key, fields):

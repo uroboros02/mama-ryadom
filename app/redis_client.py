@@ -14,10 +14,18 @@ _client: Optional["redis.Redis"] = None
 
 
 def get_redis() -> "redis.Redis":
-    """Вернуть общий Redis-клиент (создаётся при первом обращении)."""
+    """Вернуть общий Redis-клиент (создаётся при первом обращении).
+
+    REDIS_URL=fakeredis → in-process Redis (дев-режим Фазы А: без установки сервера,
+    всё в процессе). Иначе — настоящий Redis по URL (Фаза Б / локальный сервер).
+    """
     global _client
     if _client is None:
-        _client = redis.from_url(config.REDIS_URL)
+        if config.REDIS_URL == "fakeredis":
+            import fakeredis
+            _client = fakeredis.FakeStrictRedis()
+        else:
+            _client = redis.from_url(config.REDIS_URL)
     return _client
 
 

@@ -25,6 +25,7 @@ class InboundMessage:
     phone: Optional[str]     # телефон, если канал его отдал (для MAX — не всегда)
     is_from_lead: bool       # True = это реплика лида; False = наша/продавца (не реагируем)
     author_id: Optional[str] # кто отправил (для опознания продавца)
+    name: Optional[str]      # имя из канала — только для общения, НЕ ключ опознания (тёзки)
 
 
 def translate(payload: dict) -> InboundMessage:
@@ -49,4 +50,5 @@ def translate(payload: dict) -> InboundMessage:
         phone=contact.get("phone"),
         is_from_lead=not (is_echo or is_seller),
         author_id=author_id,
+        name=contact.get("name"),
     )

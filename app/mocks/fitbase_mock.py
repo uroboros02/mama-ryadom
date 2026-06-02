@@ -15,7 +15,9 @@ from app.fitbase import FitbaseDown, FitbaseRateLimited
 class FitbaseMock:
     def __init__(self):
         self.leads = {}        # lead_id -> dict
+        self.clients = {}      # client_id -> {contacts: {...}, contract_active: bool}
         self.tasks = []        # созданные задачи
+        self._lead_seq = 0
         self.down = False
         self.fail_429_times = 0
 
@@ -39,6 +41,25 @@ class FitbaseMock:
                 return lead
         return None
 
+    def find_active_client_by_contact(self, keys):
+        """Действующий клиент с активным контрактом по надёжному ключу. Имя НЕ ключ."""
+        self._maybe_fail()
+        for client in self.clients.values():
+            if not client.get("contract_active"):
+                continue
+            contacts = client.get("contacts", {})
+            for k, v in keys.items():
+                if v and contacts.get(k) == v:
+                    return client
+        return None
+
+    def create_lead(self, **fields):
+        self._maybe_fail()
+        self._lead_seq += 1
+        lead_id = f"L{self._lead_seq}"
+        self.leads[lead_id] = {"id": lead_id, **fields}
+        return self.leads[lead_id]
+
     def create_task(self, **fields):
         self._maybe_fail()
         task = {"id": len(self.tasks) + 1, **fields}
@@ -51,7 +72,12 @@ class FitbaseMock:
         lead.setdefault("custom_fields", {}).update(fields)
         return lead
 
-    # --- помощник для тестов: засеять лид ---
+    # --- помощники для тестов ---
     def seed_lead(self, lead_id, **fields):
         self.leads[lead_id] = {"id": lead_id, **fields}
         return self.leads[lead_id]
+
+    def seed_client(self, client_id, contacts, contract_active=True):
+        self.clients[client_id] = {"id": client_id, "contacts": contacts,
+                                   "contract_active": contract_active}
+        return self.clients[client_id]
