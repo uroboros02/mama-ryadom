@@ -25,3 +25,11 @@ FITBASE_MAX_RPS = int(_get("FITBASE_MAX_RPS", "20"))
 
 # Подключение к Redis. В тестах подменяется на fakeredis (Шаг 0 теста).
 REDIS_URL = _get("REDIS_URL", "redis://localhost:6379/0")
+
+# Общий секрет вебхука Wazzup: приходит в заголовке `Authorization: Bearer <crmKey>`.
+# Его задаём МЫ в кабинете Wazzup; чужой/пустой Bearer → дверь отбивает запрос (Шаг 1).
+WAZZUP_WEBHOOK_SECRET = _get("WAZZUP_WEBHOOK_SECRET", "dev-secret-change-me")
+
+# id автора-продавца в Wazzup. Реплики с этим authorId — это человек за рулём,
+# не сообщение лида (помечаем; переключение в РУЧНОЙ — Шаг 5).
+SELLER_AUTHOR_ID = _get("SELLER_AUTHOR_ID", "")

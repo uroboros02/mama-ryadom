@@ -13,7 +13,7 @@ import fakeredis
 from fastapi.testclient import TestClient
 
 from app.main import app
-from app.config import UFA_TZ
+from app.config import UFA_TZ, WAZZUP_WEBHOOK_SECRET
 
 client = TestClient(app)
 
@@ -26,9 +26,10 @@ def test_health_alive():
 
 
 def test_webhook_accepts_fake_push():
-    """Труба принимает вброшенный фейковый вебхук и подтверждает (быстрый ack)."""
-    fake_push = {"messageId": "test-1", "text": "привет", "channel": "MAX"}
-    resp = client.post("/webhook", json=fake_push)
+    """Труба принимает вброшенный фейковый вебхук (с валидным секретом) и подтверждает."""
+    fake_push = {"messageId": "test-1", "text": "привет", "chatType": "max"}
+    headers = {"Authorization": f"Bearer {WAZZUP_WEBHOOK_SECRET}"}
+    resp = client.post("/webhook", json=fake_push, headers=headers)
     assert resp.status_code == 200
 
 
