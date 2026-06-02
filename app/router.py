@@ -94,6 +94,9 @@ def route(msg, window) -> RouteResult:
     # ОПОЗНАТЬ → ОДИН лид: сначала ищем в своём индексе.
     lead_id = _lookup_index(keys)
     if lead_id:
+        # Подшить новые ключи (напр. id нового канала) к найденному лиду — чтобы
+        # дальше его узнавали и по ним (мультиканальная склейка одного человека).
+        _index_keys(keys, lead_id)
         logger.info("опознан существующий лид: id=%s", lead_id)
         return RouteResult(action="lead", lead_id=lead_id, created=False)
 

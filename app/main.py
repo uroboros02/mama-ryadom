@@ -19,6 +19,7 @@ from app import config, channel_max, router, state, memory
 from app.fitbase import FitbaseWindow
 from app.mocks.fitbase_mock import FitbaseMock
 from app.mocks.alert_mock import AlertMock
+from app.mocks.wazzup_mock import WazzupMock
 
 # Блок 0 проверяется «по приборам» (логам) → INFO обязан печататься.
 # В лог НЕ пишем ПД (телефон/текст) — только технические метки.
@@ -41,6 +42,23 @@ def get_window():
 def set_window(window):
     global _window
     _window = window
+
+
+# Outbound-канal (отправка клиенту). В Блоке 0 НЕ вызывается (бот клиенту не пишет) —
+# это шов для F1. Провайдер подменяется в тестах.
+_sender = None
+
+
+def get_sender():
+    global _sender
+    if _sender is None:
+        _sender = WazzupMock()
+    return _sender
+
+
+def set_sender(sender):
+    global _sender
+    _sender = sender
 
 
 def _alert(text):
