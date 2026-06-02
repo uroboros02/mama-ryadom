@@ -1,6 +1,7 @@
 # Секреты — никогда не в git
 .env
 .env.*
+!.env.example
 *.key
 *.pem
 
