@@ -102,6 +102,14 @@ class FitbaseWindow:
             logger.warning("Fitbase недоступен при поиске лида (%s) → None", channel)
             return None
 
+    def list_leads_updated_since(self, since_iso):
+        """Лиды, изменённые с момента since_iso (радар двери B). None = Fitbase лёг."""
+        try:
+            return self._call(self.client.list_leads_updated_since, since_iso)
+        except FitbaseDown:
+            logger.warning("Fitbase недоступен — радар пропускает цикл (watermark не двигаем)")
+            return None
+
     def active_client_by_contact(self, keys):
         """Действующий клиент с активным контрактом по надёжному ключу (телефон/id канала)?
 

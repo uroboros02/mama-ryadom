@@ -9,6 +9,8 @@
   · fail_429_times=N     → ближайшие N вызовов отвечают 429 (FitbaseRateLimited), потом ок.
 """
 
+from datetime import datetime
+
 from app.fitbase import FitbaseDown, FitbaseRateLimited
 
 
@@ -52,6 +54,15 @@ class FitbaseMock:
                 if v and contacts.get(k) == v:
                     return client
         return None
+
+    def list_leads_updated_since(self, since_iso):
+        """Лиды с updated_at >= since_iso (или все, если since_iso=None), по возрастанию."""
+        self._maybe_fail()
+        since = datetime.fromisoformat(since_iso) if since_iso else None
+        out = [lead for lead in self.leads.values()
+               if lead.get("updated_at")
+               and (since is None or datetime.fromisoformat(lead["updated_at"]) >= since)]
+        return sorted(out, key=lambda l: l["updated_at"])
 
     def create_lead(self, **fields):
         self._maybe_fail()
