@@ -23,6 +23,10 @@ def _get(name: str, default: str) -> str:
 # Лимит обращений к Fitbase: турникет ≤20 запросов в секунду (Шаг 3).
 FITBASE_MAX_RPS = int(_get("FITBASE_MAX_RPS", "20"))
 
+# Автостоп: если по одному лиду за минуту прошло больше этого числа сообщений —
+# что-то зациклилось → глушим бота в РУЧНОЙ + алерт продавцу (Шаг 5).
+AUTOSTOP_MAX_PER_MIN = int(_get("AUTOSTOP_MAX_PER_MIN", "10"))
+
 # Подключение к Redis. В тестах подменяется на fakeredis (Шаг 0 теста).
 REDIS_URL = _get("REDIS_URL", "redis://localhost:6379/0")
 

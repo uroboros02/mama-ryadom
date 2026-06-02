@@ -15,7 +15,7 @@ import logging
 
 from fastapi import BackgroundTasks, FastAPI, Header, Request, Response
 
-from app import config, channel_max, router
+from app import config, channel_max, router, state
 from app.fitbase import FitbaseWindow
 from app.mocks.fitbase_mock import FitbaseMock
 from app.mocks.alert_mock import AlertMock
@@ -43,6 +43,14 @@ def set_window(window):
     _window = window
 
 
+def _alert(text):
+    """Эскалация продавцу: в коробку алертов окна + лог."""
+    w = get_window()
+    if getattr(w, "alert", None) is not None:
+        w.alert.push(text)
+    logger.warning("ЭСКАЛАЦИЯ: %s", text)
+
+
 @app.get("/health")
 async def health():
     """Пульс: сервер поднят и отвечает."""
@@ -67,14 +75,31 @@ def _process_messages(messages: list) -> None:
             msg.channel, msg.chat_id, msg.message_id, msg.is_from_lead,
         )
 
-        # Своя отправка / реплика продавца — не реакция лида (стоп-кран, метка Шага 1).
+        # Своя отправка / реплика продавца → человек взял руль: лид в РУЧНОЙ (стоп-кран).
+        # (В Блоке 0 бот клиенту не пишет, значит эхо = продавец. Когда F1 начнёт
+        #  отправлять — свои отправки надо будет помечать, чтобы не глушить самих себя.)
         if not msg.is_from_lead:
+            lead_id = router.lookup_lead_id(msg)
+            if lead_id and not state.is_silenced(lead_id):
+                state.set_manual(lead_id, reason="реплика продавца/эхо")
             continue
 
         # Опознать → один лид + ворота (лид / действующий клиент → к админу).
         result = router.route(msg, get_window())
         logger.info("маршрут: action=%s lead=%s created=%s",
                     result.action, result.lead_id, result.created)
+        if result.action != "lead":
+            continue
+
+        # Автостоп: слишком много сообщений по лиду за минуту → глушим + алерт (анти-зацикливание).
+        if state.bump_and_check_autostop(result.lead_id):
+            state.set_manual(result.lead_id, reason="автостоп")
+            _alert(f"Автостоп по лиду {result.lead_id}: слишком много сообщений за минуту")
+
+        # Стоп-кран: в РУЧНОМ бот молчит по этому лиду (видимый ответ — на F1).
+        if state.is_silenced(result.lead_id):
+            logger.info("РУЧНОЙ — молчим по лиду %s (входящее в память)", result.lead_id)
+            continue
 
 
 @app.post("/webhook")
@@ -111,3 +136,17 @@ async def webhook(
         background_tasks.add_task(_process_messages, messages)
 
     return {"received": True}
+
+
+@app.post("/control")
+async def control(request: Request, authorization: str = Header(default="")):
+    """Команды продавца из TG-алерта: #стоп (заглушить лида) / #старт (вернуть бота).
+
+    Сознательно НЕ из клиентского чата — управление идёт через алерт (block-0.md).
+    Защищена тем же общим секретом, что и вебхук.
+    """
+    if authorization != f"Bearer {config.WAZZUP_WEBHOOK_SECRET}":
+        return Response(status_code=401)
+    payload = await request.json()
+    applied = state.handle_command(payload.get("lead_id"), payload.get("command"))
+    return {"applied": applied}

@@ -77,6 +77,11 @@ def _index_keys(keys, lead_id):
         r.set(f"idx:{k}:{v}", lead_id)
 
 
+def lookup_lead_id(msg):
+    """Найти lead_id по входящему БЕЗ создания (для эхо/продавца: опознать чат, не плодя лид)."""
+    return _lookup_index(identity_keys(msg))
+
+
 def route(msg, window) -> RouteResult:
     """Опознать входящее: действующий клиент → к админу; иначе → один лид (искать до создания)."""
     keys = identity_keys(msg)
