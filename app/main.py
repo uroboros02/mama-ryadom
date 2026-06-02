@@ -15,7 +15,7 @@ import logging
 
 from fastapi import BackgroundTasks, FastAPI, Header, Request, Response
 
-from app import config, channel_max, router, state
+from app import config, channel_max, router, state, memory
 from app.fitbase import FitbaseWindow
 from app.mocks.fitbase_mock import FitbaseMock
 from app.mocks.alert_mock import AlertMock
@@ -80,8 +80,11 @@ def _process_messages(messages: list) -> None:
         #  отправлять — свои отправки надо будет помечать, чтобы не глушить самих себя.)
         if not msg.is_from_lead:
             lead_id = router.lookup_lead_id(msg)
-            if lead_id and not state.is_silenced(lead_id):
-                state.set_manual(lead_id, reason="реплика продавца/эхо")
+            if lead_id:
+                memory.append(lead_id, role="seller", text=msg.text,
+                              channel=msg.channel, message_id=msg.message_id)
+                if not state.is_silenced(lead_id):
+                    state.set_manual(lead_id, reason="реплика продавца/эхо")
             continue
 
         # Опознать → один лид + ворота (лид / действующий клиент → к админу).
@@ -90,6 +93,10 @@ def _process_messages(messages: list) -> None:
                     result.action, result.lead_id, result.created)
         if result.action != "lead":
             continue
+
+        # Память за человеком: дописываем КАЖДОЕ входящее лида (в т.ч. пока бот молчит).
+        memory.append(result.lead_id, role="lead", text=msg.text,
+                      channel=msg.channel, message_id=msg.message_id)
 
         # Автостоп: слишком много сообщений по лиду за минуту → глушим + алерт (анти-зацикливание).
         if state.bump_and_check_autostop(result.lead_id):
