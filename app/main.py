@@ -15,7 +15,7 @@ import logging
 
 from fastapi import BackgroundTasks, FastAPI, Header, Request, Response
 
-from app import config, channel_max
+from app import config, channel_max, router
 
 # Блок 0 проверяется «по приборам» (логам) → INFO обязан печататься.
 # В лог НЕ пишем ПД (телефон/текст) — только технические метки.
@@ -38,6 +38,12 @@ def _process_messages(messages: list) -> None:
     """
     for raw in messages:
         msg = channel_max.translate(raw)
+
+        # Идемпотентность: повтор того же messageId (ретрай Wazzup) — молча выкинуть.
+        if router.already_processed(msg.message_id):
+            logger.info("повтор, пропущен: msg_id=%s", msg.message_id)
+            continue
+
         logger.info(
             "входящее: channel=%s chat=%s msg_id=%s from_lead=%s",
             msg.channel, msg.chat_id, msg.message_id, msg.is_from_lead,
