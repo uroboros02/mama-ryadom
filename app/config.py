@@ -33,3 +33,9 @@ WAZZUP_WEBHOOK_SECRET = _get("WAZZUP_WEBHOOK_SECRET", "dev-secret-change-me")
 # id автора-продавца в Wazzup. Реплики с этим authorId — это человек за рулём,
 # не сообщение лида (помечаем; переключение в РУЧНОЙ — Шаг 5).
 SELLER_AUTHOR_ID = _get("SELLER_AUTHOR_ID", "")
+
+# Доступ к Fitbase (CRM). Токен — в env, НЕ в коде (152-ФЗ / безопасность).
+# На Фазе А не используется (работаем на mock), нужен на Фазе Б (триал).
+FITBASE_TOKEN = _get("FITBASE_TOKEN", "")
+FITBASE_DOMAIN = _get("FITBASE_DOMAIN", "")
+FITBASE_BASE_URL = _get("FITBASE_BASE_URL", "https://api.fitbase.io/api/v2/")
