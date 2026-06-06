@@ -11,6 +11,11 @@ __pycache__/
 .venv/
 venv/
 
+# Персональные данные клиентов — НЕ коммитим (152-ФЗ, есть GitHub-remote)
+chats wazzup.csv
+*.csv
+data/
+
 # Мусор и локальные индексы
 .DS_Store
 .codegraph/
